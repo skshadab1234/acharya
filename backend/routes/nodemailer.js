@@ -14,7 +14,7 @@ const sendEmail = async (toEmail, subject, htmlContent, attachment) => {
     });
 
     let message = {
-      from: '"SAGAR TECH" <ks615044@gmail.com>', // Add both name and email address
+      from: '"Acharya Shiv" <ks615044@gmail.com>', // Add both name and email address
       to: toEmail,
       subject: subject,
       html: htmlContent,

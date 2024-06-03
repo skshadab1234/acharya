@@ -1,11 +1,21 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Table, Modal, Button, Pagination, Input, Spin, Switch, Select, Form } from 'antd';
+import { Table, Modal, Button, Pagination, Input, Spin, Switch, Select, Form, Tag, Descriptions } from 'antd';
 import PageHeaderWithBreadcrumb from '@/components/utils/pageHeaderwithBreadcrumb';
 import { getCookie } from '@/components/layouts/header';
-import { formatDateTime } from '@/utils';
+import { formatDateTime, formatTwoDate } from '@/utils';
 import { debounce } from 'lodash';
 import { Edit3Icon } from 'lucide-react';
+import { PhoneOutlined } from '@ant-design/icons';
+import moment from 'moment';
+
+interface RecordType {
+    preferred_date: string;
+    preferred_time: string;
+    appointment_till_date: string;
+    appointment_till_time: string;
+    appointmentstatus: 'attended' | 'not_attended' | 'cancelled';
+}
 
 const AllConsultation = () => {
     const [form] = Form.useForm();
@@ -19,7 +29,7 @@ const AllConsultation = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [loading, setLoading] = useState(false);
     const [loadingButton, setButtonLoading] = useState(false);
-
+    const [paymentModal, setPaymentDetailModal] = useState(false);
     const [showModalfix, setShowModal] = useState(false);
 
     useEffect(() => {
@@ -56,23 +66,44 @@ const AllConsultation = () => {
         setCurrentPage(page);
         setPageSize(pageSize);
     };
+    const calculateBirthYear = (age: number): number => {
+        const currentYear = new Date().getFullYear();
+        return currentYear - age;
+    };
 
     const columns = [
         {
             title: '',
+            width: 80,
+
             render: (_: string, record: any) => {
                 return <Edit3Icon onClick={() => handleUpdate(record)} className=" cursor-pointer text-green-700" />;
             },
         },
         {
+            title: 'Sr.No',
+            key: 'id',
+            dataIndex: 'id',
+            width: 100,
+        },
+        {
             title: 'Appointment Date & Time',
             key: 'appointment_date_time',
-            width: 350,
+            width: 300,
             render: (text: string, record: any) => {
                 try {
-                    const { start, end } = formatDateTime(record.preferred_date, record.preferred_time, record.appointment_till_date, record.appointment_till_time);
+                    const { start, end, endDateTime, startDateTime } = formatTwoDate(record.preferred_date, record.preferred_time, record.appointment_till_date, record.appointment_till_time);
+                    console.log(start, end, endDateTime, startDateTime, 'start, end, endDateTime, startDateTime');
+                    
+                    const statusColors: Record<RecordType['appointmentstatus'], string> = {
+                        attended: 'green',
+                        not_attended: 'red',
+                        cancelled: 'orange',
+                    };
+                    const sessionDuration = Math.abs(endDateTime.getTime() - startDateTime.getTime()) / 36e5; // duration in hours
+
                     return (
-                        <div>
+                        <div className="flex flex-col gap-1">
                             <h2>
                                 <b>Start: </b>
                                 {start}
@@ -82,30 +113,108 @@ const AllConsultation = () => {
                                 {end}
                             </h2>
                             <h2>
-                                {record?.appointmentstatus}
+                                <b>Session: </b>
+                                {sessionDuration.toFixed(1)} hours
                             </h2>
+                            <div>
+                                <Tag color={statusColors[record.appointmentstatus]} className=" capitalize">
+                                    {record.appointmentstatus?.replace('_', ' ')}
+                                </Tag>
+                            </div>
                         </div>
                     );
                 } catch (error) {
-                    return 'Invalid date or time';
+                    return 'Invalid date or time' + error;
                 }
             },
         },
-        { title: 'Full Name', dataIndex: 'full_name', key: 'full_name', width: 200 },
-        { title: 'Location', dataIndex: 'location', key: 'location', width: 200 },
-        { title: 'Age', dataIndex: 'age', key: 'age', width: 200 },
+        {
+            title: 'Full Name',
+            dataIndex: 'full_name',
+            key: 'full_name',
+            width: 300,
+            render: (_: string, record: any) => {
+                return (
+                    <div>
+                        <p>{_}</p>
+                        <p>Email: {record?.email_address ? <a href={`mailto:${record?.email_address}`}>{record?.email_address || 'N/A'}</a> : 'N/A'}</p>
+                    </div>
+                );
+            },
+        },
+        {
+            title: 'Location',
+            dataIndex: 'location',
+            key: 'location',
+            width: 150,
+            render: (text: string, record: any) => {
+                const { city, state, country } = record;
+                const fullAddress = [city, state, country].filter(Boolean).join(', ');
+
+                return (
+                    <div>
+                        <p>{fullAddress}</p>
+                    </div>
+                );
+            },
+        },
+        {
+            title: 'Age',
+            dataIndex: 'age',
+            key: 'age',
+            width: 100,
+            render: (age: number) => {
+                const birthYear = calculateBirthYear(age);
+                return (
+                    <div>
+                        {age} ({birthYear})
+                    </div>
+                );
+            },
+        },
+
         {
             title: 'Contact Number',
             dataIndex: 'contact_number',
-            width: 200,
+            width: 150,
             key: 'contact_number',
             render: (text: string) => <a href={`tel:${text}`}>{text}</a>, // Add a link with the tel protocol to initiate a phone call
         },
-        { title: 'Purpose of Yoga', width: 200, dataIndex: 'purpose_of_yoga', key: 'purpose_of_yoga' },
+        {
+            title: 'Payment Details',
+            dataIndex: 'paymentDetails',
+            key: 'paymentDetails',
+            width: 180,
+            render: (_, record: any) => (
+                <div className="mb-4 flex flex-col items-center justify-center rounded-lg border p-4">
+                    <p className="mb-2">
+                        <strong>Mode:</strong> {record.payment_mode || 'N/A'}
+                    </p>
+                    <p className="mb-2">
+                        <strong>Status:</strong> {record?.payment_status}
+                    </p>
+                    <p className="mb-2">
+                        <strong>Amount:</strong> {record?.payment_amount}
+                    </p>
+
+                    <button
+                        className="text-blue-500 underline hover:text-blue-700"
+                        onClick={() => {
+                            setSelectedRecord(record);
+                            setPaymentDetailModal(true);
+                        }}
+                    >
+                        View
+                    </button>
+                </div>
+            ),
+        },
+
+        { title: 'Purpose of Yoga', width: 150, dataIndex: 'purpose_of_yoga', key: 'purpose_of_yoga' },
         {
             title: 'Action',
             key: 'action',
-            width: 200,
+            width: 150,
 
             render: (text: string, record: any) => (
                 <div>
@@ -142,13 +251,17 @@ const AllConsultation = () => {
         handleSearch(value);
     };
 
-    console.log(consultationData, 'con');
+    const statusColors = {
+        attended: 'green',
+        not_attended: 'red',
+        cancelled: 'orange',
+    };
 
     return (
         <div>
             <PageHeaderWithBreadcrumb
                 crumbs={[{ title: 'Home', href: '/admin' }, { title: 'Consultation', href: '/admin/consultation/all' }, { title: 'All Consultation' }]}
-                title="All Consultation"
+                title={`All Consultation (${totalRecords})`}
                 description="Find all consultation information here."
             />
             <div className="h-full w-full bg-white ">
@@ -156,10 +269,11 @@ const AllConsultation = () => {
                     <Input onChange={onInputChange} className="h-12 text-xl font-semibold text-gray-800 placeholder:text-xl" placeholder="Search customer name, contact number" />
                 </div>
                 <Spin spinning={loading}>
-                    <Table columns={columns} dataSource={consultationData} rowKey="id" pagination={false} />
+                    <Table scroll={{ x: 1200, y: 700 }} columns={columns} dataSource={consultationData} rowKey="id" pagination={false} />
                 </Spin>
                 <div className="flex items-center justify-center py-10">
                     <Pagination
+                        hideOnSinglePage
                         showTotal={(total) => `Total ${total} items`}
                         current={currentPage}
                         pageSize={pageSize}
@@ -180,47 +294,40 @@ const AllConsultation = () => {
                 ]}
             >
                 {selectedRecord && (
-                    <div>
-                        <p>
-                            <strong>Full Name:</strong> {selectedRecord.full_name}
-                        </p>
-                        <p>
-                            <strong>Location:</strong> {selectedRecord.location}
-                        </p>
-                        <p>
-                            <strong>Age:</strong> {selectedRecord.age}
-                        </p>
-                        <p>
-                            <strong>Contact Number:</strong> {selectedRecord.contact_number}
-                        </p>
-                        <p>
-                            <strong>Alternate Mobile Number:</strong> {selectedRecord.alternate_mobile_number}
-                        </p>
-                        <p>
-                            <strong>Diet Preference:</strong> {selectedRecord.diet_preference}
-                        </p>
-                        <p>
-                            <strong>Zodiac Sign:</strong> {selectedRecord.zodiac_sign}
-                        </p>
-                        <p>
-                            <strong>Relationship Status:</strong> {selectedRecord.relationship_status}
-                        </p>
-                        <p>
-                            <strong>Medicine Consumption:</strong> {selectedRecord.medicine_consumption}
-                        </p>
-                        <p>
-                            <strong>Disorders or Disease:</strong> {selectedRecord.disorders_or_disease}
-                        </p>
-                        <p>
-                            <strong>Purpose of Yoga:</strong> {selectedRecord.purpose_of_yoga}
-                        </p>
-                        <p>
-                            <strong>Personal Notes:</strong> {selectedRecord.personal_notes}
-                        </p>
-                        <p>
-                            <strong>Created At:</strong> {selectedRecord.created_at}
-                        </p>
-                    </div>
+                    <>
+                        <div className="my-5 flex justify-between">
+                            <p className="italic">
+                                Last updated on: {formatDateTime(selectedRecord?.appointmentendedbyadmintime ? selectedRecord?.appointmentendedbyadmintime : selectedRecord?.created_at)}
+                            </p>
+                            <div className="flex flex-col items-center justify-center text-center">
+                                <Tag color={statusColors[selectedRecord?.appointmentstatus]} className="capitalize">
+                                    {selectedRecord?.appointmentstatus?.replace('_', ' ')}
+                                </Tag>
+                                <div className="py-2">
+                                    {(selectedRecord?.appointmentstatus === 'cancelled' || selectedRecord?.appointmentstatus === 'not_attended') && (
+                                        <a href={`tel:${selectedRecord?.contact_number}`} className="flex items-center text-blue-500 hover:text-blue-700">
+                                            <PhoneOutlined className="mr-1" />
+                                            {selectedRecord?.contact_number}
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <Descriptions bordered column={2} layout="vertical">
+                            <Descriptions.Item label="Full Name">{selectedRecord?.full_name}</Descriptions.Item>
+                            <Descriptions.Item label="Age">{selectedRecord?.age}</Descriptions.Item>
+                            <Descriptions.Item label="Contact Number">{selectedRecord?.contact_number}</Descriptions.Item>
+                            <Descriptions.Item label="Alternate Mobile Number">{selectedRecord?.alternate_mobile_number}</Descriptions.Item>
+                            <Descriptions.Item label="Diet Preference">{selectedRecord?.diet_preference}</Descriptions.Item>
+                            <Descriptions.Item label="Zodiac Sign">{selectedRecord?.zodiac_sign}</Descriptions.Item>
+                            <Descriptions.Item label="Relationship Status">{selectedRecord?.relationship_status}</Descriptions.Item>
+                            <Descriptions.Item label="Medicine Consumption">{selectedRecord?.medicine_consumption}</Descriptions.Item>
+                            <Descriptions.Item label="Disorders or Disease">{selectedRecord?.disorders_or_disease}</Descriptions.Item>
+                            <Descriptions.Item label="Purpose of Yoga">{selectedRecord?.purpose_of_yoga}</Descriptions.Item>
+                            <Descriptions.Item label="Personal Notes">{selectedRecord?.personal_notes}</Descriptions.Item>
+                        </Descriptions>
+                    </>
                 )}
             </Modal>
 
@@ -301,6 +408,24 @@ const AllConsultation = () => {
                         </Button>
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            <Modal
+                open={paymentModal}
+                title="Payment Details"
+                onCancel={() => {
+                    setPaymentDetailModal(false);
+                    setSelectedRecord(null);
+                }}
+                footer={null}
+            >
+                <Descriptions bordered column={1}>
+                    <Descriptions.Item label="Payment Mode">{selectedRecord?.payment_mode || 'N/A'}</Descriptions.Item>
+                    <Descriptions.Item label="Payment Status">{selectedRecord?.payment_status || 'N/A'}</Descriptions.Item>
+                    <Descriptions.Item label="Payment Amount">{selectedRecord?.payment_amount || 'N/A'}</Descriptions.Item>
+                    <Descriptions.Item label="Payment ID">{selectedRecord?.payment_id || 'N/A'}</Descriptions.Item>
+                    <Descriptions.Item label="Payment">{selectedRecord?.payment_obj ? JSON.stringify(selectedRecord?.payment_obj) : 'N/A'}</Descriptions.Item>
+                </Descriptions>
             </Modal>
         </div>
     );

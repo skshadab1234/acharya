@@ -33,14 +33,14 @@ app.post("/adminlogin", async (req, res) => {
           { id: superAdminLogin.id },
           process.env.SECRET_KEY,
           {
-            expiresIn: "1h", // Token expires in 1 hour
+            expiresIn: "8h", // Token expires in 1 hour
           }
         );
         // Set a cookie with the JWT
         res.cookie("token", token, { httpOnly: true, secure: false }); // Set secure to true if you're using HTTPS
 
         // Calculate the expiry time based on the 'expiresIn' option
-        const expiryTime = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+        const expiryTime = new Date(Date.now() + 60 * 60 * 8000); // 1 hour from now
 
         res.status(200).send({
           status: 200,

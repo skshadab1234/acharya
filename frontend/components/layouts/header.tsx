@@ -25,7 +25,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { getTranslation } from '@/i18n';
 import { Adminurl } from '@/app/layout';
 import { addAdmin } from '@/store/adminslice';
-import { Avatar } from 'antd';
+import { Avatar, Button, Modal } from 'antd';
+import { jwtDecode } from "jwt-decode";
 
 export function getCookie(name: string): string | undefined {
     const value = `; ${document.cookie}`;
@@ -123,6 +124,7 @@ const Header = () => {
     function createMarkup(messages: any) {
         return { __html: messages };
     }
+
     const [messages, setMessages] = useState([
         {
             id: 1,
@@ -152,10 +154,66 @@ const Header = () => {
 
     const [search, setSearch] = useState(false);
 
+    const [tokenValid, setTokenValid] = useState(null);
+
+    useEffect(() => {
+        const checkTokenExpiration = () => {
+            const tokenSagartech = getCookie('tokenSagartech'); // Assuming getCookie is defined elsewhere
+
+            if (tokenSagartech) {
+                try {
+                    const decoded = jwtDecode(tokenSagartech);
+                    console.log(decoded);
+
+                    const currentTimeInSeconds = Math.floor(Date.now() / 1000); // Convert milliseconds to seconds
+                    if (decoded?.exp > currentTimeInSeconds) {
+                        console.log('Token is still valid.');
+                        // Perform actions if token is valid
+                        setTokenValid(true);
+                    } else {
+                        console.log('Token has expired.');
+                        setTokenValid(false);
+
+                        // Perform actions if token has expired
+                    }
+                } catch (error) {
+                    console.error('Error decoding token:', error);
+                }
+            }
+        };
+
+        // Initial check
+        checkTokenExpiration();
+
+        // Set interval to check every 10 seconds
+        const intervalId = setInterval(checkTokenExpiration, 10000);
+
+        // Cleanup function to clear interval on component unmount
+        return () => clearInterval(intervalId);
+    }, []);
+    const handleLoginClick = () => {
+        window.location.href = "/admin-login";
+      };
+
     return (
         <header className={`z-40 ${themeConfig.semidark && themeConfig.menu === 'horizontal' ? 'dark' : ''}`}>
+            {tokenValid === false && (
+                <Modal
+                    open={true}
+                    footer={null}
+                    closable={false}
+                    maskClosable={false} // Prevent closure on backdrop click
+                >
+                    <h2 className="mt-10 flex items-center justify-center text-center text-4xl font-bold text-gray-600">Your session has timed out.</h2>
+                    <div style={{ marginTop: '20px' }}>
+                        <Button type="" className=" h-12 w-full bg-black/80 text-xl text-white hover:bg-black/60" onClick={handleLoginClick}>
+                            Login
+                        </Button>
+                    </div>
+                </Modal>
+            )}
             <div className="shadow-sm">
-                <div className="relative flex w-full items-center bg-white px-5 py-2.5 dark:bg-black">
+                <div className="relative flex w-full items-center bg-white px-5 py-2.5 dark:bg-black z-99">
                     <div className="horizontal-logo flex items-center justify-between ltr:mr-2 rtl:ml-2 lg:hidden">
                         <Link href="/" className="main-logo flex shrink-0 items-center">
                             <img className="inline w-12 ltr:-ml-1 rtl:-mr-1" src="/logo.jpeg" alt="logo" />
@@ -191,7 +249,7 @@ const Header = () => {
                             </li>
                         </ul>
                     </div> */}
-                    <div className="flex items-center space-x-1.5 ltr:ml-auto rtl:mr-auto rtl:space-x-reverse dark:text-[#d0d2d6] sm:flex-1 ltr:sm:ml-0 sm:rtl:mr-0 lg:space-x-2">
+                    <div className="flex items-center space-x-1.5 ltr:ml-auto rtl:mr-auto rtl:space-x-reverse dark:text-[#d0d2d6] sm:flex-1 ltr:sm:ml-0 sm:rtl:mr-0 lg:space-x-2 z-99">
                         <div className="sm:ltr:mr-auto sm:rtl:ml-auto">
                             <form
                                 className={`${search && '!block'} absolute inset-x-0 top-1/2 z-10 mx-4 hidden -translate-y-1/2 sm:relative sm:top-0 sm:mx-0 sm:block sm:translate-y-0`}

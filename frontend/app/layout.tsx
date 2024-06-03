@@ -4,15 +4,14 @@ import '../styles/tailwind.css';
 import { Metadata } from 'next';
 import { Nunito } from 'next/font/google';
 
-export const Adminurl = process.env.ADMINURL
+export const Adminurl = process.env.ADMINURL;
 
 export const metadata: Metadata = {
     title: {
-        template: '%s | ECOMSYS - Your Go-To CMS for E-commerce',
-        default: 'ECOMSYS - Your Go-To CMS for E-commerce',
+        template: '%s | Acharya Yoga Classes',
+        default: 'Acharya Yoga Classes',
     },
 };
-
 
 const nunito = Nunito({
     weight: ['400', '500', '600', '700', '800'],
@@ -20,7 +19,6 @@ const nunito = Nunito({
     display: 'swap',
     variable: '--font-nunito',
 });
-
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
