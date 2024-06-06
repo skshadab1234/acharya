@@ -105,13 +105,14 @@ app.put("/update-consultation/:id", authenticate, async (req, res) => {
   }
 });
 
-app.post("/addNewConsultRecord", authenticate, async (req, res) => {
+app.post("/addNewConsultRecord", async (req, res) => {
   try {
     const {
       preferred_date,
       preferred_time,
       appointment_till_date,
       appointment_till_time,
+      insert,
     } = req.body;
 
     // res.status(200).json({ availableSlots });
@@ -155,7 +156,7 @@ app.post("/addNewConsultRecord", authenticate, async (req, res) => {
 
     // Check if appointment is within allowed time slots
     const isWithinAllowedTimeSlot =
-      (startHour >= 11 && endHour <= 16) || (startHour >= 20 && endHour <= 23);
+      (startHour >= 11 && endHour < 16) || (startHour >= 20 && endHour < 23);
 
     const slotQueryAvailable = `
       SELECT DISTINCT preferred_time
@@ -183,6 +184,7 @@ app.post("/addNewConsultRecord", authenticate, async (req, res) => {
         error:
           "Appointment time must be between 11:00 AM to 4:00 PM and 8:00 PM to 11:00 PM.",
         availableTimeSlots,
+        request: req.body,
       });
     }
 
@@ -191,6 +193,7 @@ app.post("/addNewConsultRecord", authenticate, async (req, res) => {
       return res.status(400).json({
         error: "Appointment duration cannot exceed 1 hour.",
         availableTimeSlots,
+        request: req.body,
       });
     }
 
@@ -221,36 +224,39 @@ app.post("/addNewConsultRecord", authenticate, async (req, res) => {
     const slotResult = await pool.query(slotQuery, slotValues);
 
     if (slotResult.rows[0].slot_count > 0) {
-      return res
-        .status(400)
-        .json({ error: "Slot not available.", availableTimeSlots });
+      return res.status(400).json({
+        error: "Slot not available.",
+        availableTimeSlots,
+        request: req.body,
+      });
     }
 
-    // Insert the data into your database here
-    const {
-      full_name = "",
-      age = 0,
-      contact_number = 0,
-      alternate_mobile_number = 0,
-      email_address = "",
-      country = "",
-      user_state = "",
-      city = "",
-      diet_preference = "",
-      zodiac_sign = "",
-      relationship_status = "",
-      medicine_consumption = "",
-      disorders_or_disease = "",
-      purpose_of_yoga = "",
-      personal_notes = "",
-      payment_mode = "Online",
-      payment_status = "Unpaid",
-      payment_amount = "",
-      payment_id = "",
-      payment_obj = {},
-    } = req.body;
+    // Insert new consultation record
+    if (insert) {
+      const {
+        full_name = "",
+        age = 0,
+        contact_number = 0,
+        alternate_mobile_number = 0,
+        email_address = "",
+        country = "",
+        user_state = "",
+        city = "",
+        diet_preference = "",
+        zodiac_sign = "",
+        relationship_status = "",
+        medicine_consumption = "",
+        disorders_or_disease = "",
+        purpose_of_yoga = "",
+        personal_notes = "",
+        payment_mode = "Online",
+        payment_status = "Unpaid",
+        payment_amount = "",
+        payment_id = "",
+        payment_obj = {},
+      } = req.body;
 
-    const insertQuery = `
+      const insertQuery = `
       INSERT INTO consultation (
         full_name,
         age,
@@ -277,34 +283,35 @@ app.post("/addNewConsultRecord", authenticate, async (req, res) => {
       RETURNING *
       `;
 
-    const { rows } = await pool.query(insertQuery, [
-      full_name,
-      age,
-      contact_number,
-      alternate_mobile_number,
-      email_address,
-      country,
-      user_state,
-      city,
-      diet_preference,
-      zodiac_sign,
-      relationship_status,
-      medicine_consumption,
-      disorders_or_disease,
-      purpose_of_yoga,
-      personal_notes,
-      preferred_date,
-      preferred_time,
-      appointment_till_date,
-      appointment_till_time,
-      payment_mode,
-      payment_status,
-      payment_amount,
-      payment_id,
-      JSON.stringify(payment_obj),
-    ]);
+      const { rows } = await pool.query(insertQuery, [
+        full_name,
+        age,
+        contact_number,
+        alternate_mobile_number,
+        email_address,
+        country,
+        user_state,
+        city,
+        diet_preference,
+        zodiac_sign,
+        relationship_status,
+        medicine_consumption,
+        disorders_or_disease,
+        purpose_of_yoga,
+        personal_notes,
+        preferred_date,
+        preferred_time,
+        appointment_till_date,
+        appointment_till_time,
+        payment_mode,
+        payment_status,
+        payment_amount,
+        payment_id,
+        JSON.stringify(payment_obj),
+      ]);
 
-    await sendAppointmentConfirmationEmail(req.body);
+      await sendAppointmentConfirmationEmail(req.body);
+    }
 
     res
       .status(200)
@@ -463,5 +470,115 @@ const sendAppointmentConfirmationEmail = async (bookingDetails) => {
     await sendEmail(email_address, subject, htmlContent);
   }
 };
+
+app.get("/consultstats", async (req, res) => {
+  try {
+    // SQL query to count consultations by status and the total count
+    const statsQuery = `
+      SELECT 
+        appointmentstatus, 
+        COUNT(*) as count
+      FROM consultation
+      GROUP BY appointmentstatus
+    `;
+
+    const totalQuery = `
+      SELECT COUNT(*) as total_appointment FROM consultation
+    `;
+
+    // SQL query to fetch today's consultations
+    const todayConsultsQuery = `
+      SELECT COUNT(*) as today_appointments FROM consultation
+      WHERE CAST(preferred_date AS DATE) = CURRENT_DATE
+    `;
+
+    // Execute the queries
+    const [statusResult, totalResult, todayResult] = await Promise.all([
+      pool.query(statsQuery),
+      pool.query(totalQuery),
+      pool.query(todayConsultsQuery),
+    ]);
+
+    // Convert the status result to an object with status as the key and count as the value
+    const statusCounts = statusResult.rows.reduce((acc, row) => {
+      acc[row.appointmentstatus] = parseInt(row.count, 10);
+      return acc;
+    }, {});
+
+    // Get the total appointment count
+    const totalAppointments = parseInt(
+      totalResult.rows[0].total_appointment,
+      10
+    );
+
+    // Get today's appointments count
+    const todayAppointments = parseInt(
+      todayResult.rows[0].today_appointments,
+      10
+    );
+
+    // Combine the status counts, total appointment count, and today's appointments count into the response object
+    const stats = {
+      ...statusCounts,
+      total_appointment: totalAppointments,
+      today_appointments: todayAppointments,
+    };
+
+    res.status(200).json({ stats });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Error..." });
+  }
+});
+
+app.get("/monthlystats", async (req, res) => {
+  try {
+    const monthlyStatsQuery = `
+      SELECT 
+        EXTRACT(YEAR FROM created_at) as year,
+        EXTRACT(MONTH FROM created_at) as month,
+        COUNT(*) FILTER (WHERE appointmentstatus = 'not_attended') as not_attended,
+        COUNT(*) FILTER (WHERE appointmentstatus = 'attended') as attended,
+        COUNT(*) FILTER (WHERE appointmentstatus = 'cancelled') as cancelled
+      FROM consultation
+      GROUP BY EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at)
+      ORDER BY year, month;
+    `;
+
+    const monthlyStatsResult = await pool.query(monthlyStatsQuery);
+
+    // Generate an array of all months
+    const allMonths = Array.from({ length: 12 }, (_, index) => index + 1);
+    // Extract unique years from the result
+    const years = [...new Set(monthlyStatsResult.rows.map((row) => row.year))];
+
+    // Create an object to store monthly stats for each year
+    const yearlyStats = {};
+
+    years.forEach((year) => {
+      yearlyStats[year] = {};
+
+      allMonths.forEach((month) => {
+        const monthRecord = monthlyStatsResult.rows.find(
+          (row) => parseInt(row.year) == year && parseInt(row.month) == month
+        );
+        const monthName = new Date(year, month - 1, 1).toLocaleString(
+          "default",
+          { month: "short" }
+        );
+        yearlyStats[year][monthName] = {
+          not_attended: monthRecord ? parseInt(monthRecord.not_attended) : 0,
+          attended: monthRecord ? parseInt(monthRecord.attended) : 0,
+          cancelled: monthRecord ? parseInt(monthRecord.cancelled) : 0,
+        };
+      });
+    });
+
+    res.status(200).json({ yearlyStats });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Error..." });
+  }
+});
 
 module.exports = app;

@@ -7,18 +7,24 @@ const path = require("path");
 // Routes
 const admin = require("./routes/admin");
 const consult = require("./routes/consult");
+const razorpay = require("./routes/razorpay");
+const activity = require("./routes/activity");
+const blog = require("./routes/blog");
 
 
 app.use(express.json()); // Middleware para parsear el body
 app.use(cors());
-app.use("/upload", express.static(path.join(__dirname, "upload")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
 require("dotenv").config();
 
 //ALl Routes
 app.use("/api", admin);
 app.use("/api", consult);
-
+app.use("/api", razorpay);
+app.use("/api", activity);
+app.use("/api", blog);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
