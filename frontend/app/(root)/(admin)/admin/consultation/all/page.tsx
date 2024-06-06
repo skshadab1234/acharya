@@ -94,7 +94,7 @@ const AllConsultation = () => {
                 try {
                     const { start, end, endDateTime, startDateTime } = formatTwoDate(record.preferred_date, record.preferred_time, record.appointment_till_date, record.appointment_till_time);
                     console.log(start, end, endDateTime, startDateTime, 'start, end, endDateTime, startDateTime');
-                    
+
                     const statusColors: Record<RecordType['appointmentstatus'], string> = {
                         attended: 'green',
                         not_attended: 'red',
@@ -424,7 +424,19 @@ const AllConsultation = () => {
                     <Descriptions.Item label="Payment Status">{selectedRecord?.payment_status || 'N/A'}</Descriptions.Item>
                     <Descriptions.Item label="Payment Amount">{selectedRecord?.payment_amount || 'N/A'}</Descriptions.Item>
                     <Descriptions.Item label="Payment ID">{selectedRecord?.payment_id || 'N/A'}</Descriptions.Item>
-                    <Descriptions.Item label="Payment">{selectedRecord?.payment_obj ? JSON.stringify(selectedRecord?.payment_obj) : 'N/A'}</Descriptions.Item>
+                    <Descriptions.Item label="Payment">
+                        {selectedRecord?.payment_obj ? (
+                            <ul>
+                                {Object.entries(JSON.parse(selectedRecord.payment_obj)).map(([key, value]) => (
+                                    <li key={key} className='mb-2'>
+                                        <b className='text-gray-500 text-xs'>{key}:</b> <p className='text-sm text-gray-800'>{value}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            'N/A'
+                        )}
+                    </Descriptions.Item>
                 </Descriptions>
             </Modal>
         </div>

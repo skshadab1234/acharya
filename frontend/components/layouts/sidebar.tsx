@@ -34,6 +34,7 @@ import IconMenuDocumentation from '@/components/icon/menu/icon-menu-documentatio
 import { usePathname } from 'next/navigation';
 import { getTranslation } from '@/i18n';
 import IconUserPlus from '../icon/icon-user-plus';
+import { LucideEdit, WorkflowIcon } from 'lucide-react';
 
 const Sidebar = () => {
     const dispatch = useDispatch();
@@ -188,12 +189,14 @@ const Sidebar = () => {
                             </h2>
 
                             <li className="menu nav-item">
-                                <button type="button" className={`${currentMenu === '/admin/consultation/all' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('/admin/consultation/all')}>
+                                <button
+                                    type="button"
+                                    className={`${currentMenu === '/admin/consultation/all' ? 'active' : ''} nav-link group w-full`}
+                                    onClick={() => toggleMenu('/admin/consultation/all')}
+                                >
                                     <div className="flex items-center">
                                         <IconUserPlus className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">
-                                            {t('Consultaion')} 
-                                        </span>
+                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{t('Consultaion')}</span>
                                     </div>
 
                                     <div className={currentMenu !== '/admin/consultation/all' ? '-rotate-90 rtl:rotate-90' : ''}>
@@ -205,6 +208,66 @@ const Sidebar = () => {
                                     <ul className="sub-menu text-gray-500">
                                         <li>
                                             <Link href="/admin/consultation/all">{t('All Consultation')}</Link>
+                                        </li>
+                                    </ul>
+                                </AnimateHeight>
+                            </li>
+
+                            <li className="menu nav-item">
+                                <button
+                                    type="button"
+                                    className={`${currentMenu === '/admin/activities/all' ? 'active' : ''} nav-link group w-full`}
+                                    onClick={() => toggleMenu('/admin/activities/all')}
+                                >
+                                    <div className="flex items-center">
+                                        <LucideEdit className="shrink-0 group-hover:!text-primary" />
+                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{t('Activities')}</span>
+                                    </div>
+
+                                    <div className={currentMenu !== '/admin/activities/all' ? '-rotate-90 rtl:rotate-90' : ''}>
+                                        <IconCaretDown />
+                                    </div>
+                                </button>
+
+                                <AnimateHeight duration={300} height={currentMenu === '/admin/activities/all' ? 'auto' : 0}>
+                                    <ul className="sub-menu text-gray-500">
+                                        <li>
+                                            <Link href="/admin/activities/all">{t('All activities')}</Link>
+                                        </li>
+                                        <li>
+                                            <Link target="blank" href="/admin/activities/manageactivity">
+                                                {t('Add New Activity')}
+                                            </Link>
+                                        </li>
+                                    </ul>
+                                </AnimateHeight>
+                            </li>
+
+                            <li className="menu nav-item">
+                                <button
+                                    type="button"
+                                    className={`${currentMenu === '/admin/blog/all' ? 'active' : ''} nav-link group w-full`}
+                                    onClick={() => toggleMenu('/admin/blog/all')}
+                                >
+                                    <div className="flex items-center">
+                                        <WorkflowIcon className="shrink-0 group-hover:!text-primary" />
+                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{t('Blogs')}</span>
+                                    </div>
+
+                                    <div className={currentMenu !== '/admin/blog/all' ? '-rotate-90 rtl:rotate-90' : ''}>
+                                        <IconCaretDown />
+                                    </div>
+                                </button>
+
+                                <AnimateHeight duration={300} height={currentMenu === '/admin/blog/all' ? 'auto' : 0}>
+                                    <ul className="sub-menu text-gray-500">
+                                        <li>
+                                            <Link href="/admin/blog/all">{t('All blog')}</Link>
+                                        </li>
+                                        <li>
+                                            <Link target="blank" href="/admin/blog/manageblog">
+                                                {t('Add New Blog')}
+                                            </Link>
                                         </li>
                                     </ul>
                                 </AnimateHeight>

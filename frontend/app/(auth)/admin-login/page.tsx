@@ -98,15 +98,8 @@ const AdminLogin: React.FC = () => {
                     </Form>
                 </div>
 
-                <div>
-                    <h1 className="flex text-sm tracking-wide">
-                        New to {process.env.WEBSITE_NAME}?{' '}
-                        <a href="#" className="ml-2 flex gap-2 font-semibold tracking-wider text-blue-600">
-                            Get Started <ArrowRightCircle />
-                        </a>
-                    </h1>
-                </div>
-                <div className="pt-10">
+               
+                <div className="pt-5">
                     <Termslogin />
                 </div>
             </div>
