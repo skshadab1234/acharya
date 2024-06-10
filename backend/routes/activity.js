@@ -47,8 +47,8 @@ app.get("/getactivity", async (req, res) => {
   }
 });
 
-app.post("/allactivities", async (req, res) => {
-  const { page = 1, pageSize = 10, search = "" } = req.body;
+app.get("/allactivities", async (req, res) => {
+  const { page = 1, pageSize = 10, search = "" } = req.query;
 
   try {
     const offset = (page - 1) * pageSize;
@@ -63,7 +63,7 @@ app.post("/allactivities", async (req, res) => {
       `;
     const activitiesResult = await pool.query(query, [
       searchQuery,
-      pageSize,
+      parseInt(pageSize), // parseInt added here
       offset,
     ]);
 
@@ -75,13 +75,13 @@ app.post("/allactivities", async (req, res) => {
     const countResult = await pool.query(countQuery, [searchQuery]);
     const totalActivities = parseInt(countResult.rows[0].count, 10);
 
-    const totalPages = Math.ceil(totalActivities / pageSize);
+    const totalPages = Math.ceil(totalActivities / parseInt(pageSize)); // parseInt added here
 
     res.json({
       activities: activitiesResult.rows,
       totalActivities,
       totalPages,
-      currentPage: page,
+      currentPage: parseInt(page), // parseInt added here
     });
   } catch (error) {
     console.error(error);
@@ -142,10 +142,28 @@ app.post("/addactivity", uploadaactivity.array("file"), async (req, res) => {
     const { title, short_description, description, type, id, typeupload } =
       req.body;
     let media_url, thumbnail_url;
-    media_url = req.files?.[0]?.filename || null;
-    thumbnail_url = req.files?.[1]?.filename || null;
+    media_url = null;
+    thumbnail_url = null;
 
-    console.log(req.body);
+    // Check for 'remove' in typeupload and set media_url and thumbnail_url accordingly
+    if (typeupload.includes("media")) {
+      if (typeupload.includes("remove")) {
+        media_url = null;
+      } else {
+        media_url = req.files?.[0]?.filename || null;
+      }
+    }
+
+    if (typeupload.includes("thumbnail")) {
+      if (media_url && !typeupload.includes("remove")) {
+        thumbnail_url = req.files?.[1]?.filename || null;
+      } else if (typeupload.includes("remove")) {
+        thumbnail_url = null;
+      } else {
+        thumbnail_url = req.files?.[0]?.filename || null;
+      }
+    }
+    
     // Convert id to integer if present
     const activityId = id ? parseInt(id) : null;
 
@@ -178,12 +196,12 @@ app.post("/addactivity", uploadaactivity.array("file"), async (req, res) => {
           WHERE id = $9
         `;
       if (typeupload.includes("media")) {
-        media_url = media_url || existingMediaUrls.media_url;
+        media_url = media_url;
       } else {
         media_url = existingMediaUrls.media_url;
       }
       if (typeupload.includes("thumbnail")) {
-        thumbnail_url = thumbnail_url || existingMediaUrls.thumbnail_url;
+        thumbnail_url = thumbnail_url;
       } else {
         thumbnail_url = existingMediaUrls.thumbnail_url;
       }

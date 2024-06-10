@@ -15,7 +15,7 @@ app.use((req, res, next) => {
 
 app.get("/getBlogs", async (req, res) => {
   try {
-    const { id } = req.query;
+    const { id, visibility = "all" } = req.query;
 
     // Check if ID is provided
     if (!id) {
@@ -25,9 +25,18 @@ app.get("/getBlogs", async (req, res) => {
       });
     }
 
+    let query, queryParams;
+
+    if (visibility === "all") {
+      query = `SELECT * FROM blogs WHERE id = $1`;
+      queryParams = [parseInt(id)];
+    } else {
+      query = `SELECT * FROM blogs WHERE id = $1 AND visibility = $2`;
+      queryParams = [parseInt(id), visibility];
+    }
+
     // Query to fetch blogs details
-    const query = `SELECT * FROM blogs WHERE id = $1`;
-    const result = await pool.query(query, [parseInt(id)]);
+    const result = await pool.query(query, queryParams);
 
     // Check if blogs with the provided ID exists
     if (result.rows.length === 0) {
@@ -47,41 +56,61 @@ app.get("/getBlogs", async (req, res) => {
   }
 });
 
-app.post("/allblogs", async (req, res) => {
-  const { page = 1, pageSize = 10, search = "" } = req.body;
+app.get("/allblogs", async (req, res) => {
+  const {
+    page = 1,
+    pageSize = 10,
+    search = "",
+    visibility = "all",
+  } = req.query;
 
   try {
-    const offset = (page - 1) * pageSize;
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
     const searchQuery = `%${search}%`;
 
-    // Query to fetch activities with pagination and search
-    const query = `
+    let query, queryParams, countQuery, countQueryParams;
+
+    if (visibility === "all") {
+      query = `
         SELECT * FROM blogs
-        WHERE title ILIKE $1 OR description ILIKE $1 OR type ILIKE $1  OR short_description ILIKE $1
+        WHERE (title ILIKE $1 OR description ILIKE $1 OR type ILIKE $1 OR short_description ILIKE $1 OR visibility ILIKE $1 )
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
       `;
-    const activitiesResult = await pool.query(query, [
-      searchQuery,
-      pageSize,
-      offset,
-    ]);
+      queryParams = [searchQuery, parseInt(pageSize), offset];
 
-    // Query to count total activities matching the search criteria
-    const countQuery = `
+      countQuery = `
         SELECT COUNT(*) FROM blogs
-        WHERE title ILIKE $1 OR description ILIKE $1 OR type ILIKE $1 OR short_description ILIKE $1
+        WHERE title ILIKE $1 OR description ILIKE $1 OR type ILIKE $1 OR short_description ILIKE $1 OR visibility ILIKE $1 
       `;
-    const countResult = await pool.query(countQuery, [searchQuery]);
+      countQueryParams = [searchQuery];
+    } else {
+      query = `
+        SELECT * FROM blogs
+        WHERE (title ILIKE $1 OR description ILIKE $1 OR type ILIKE $1 OR short_description ILIKE $1 OR visibility ILIKE $1 ) AND visibility = $4
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+      `;
+      queryParams = [searchQuery, parseInt(pageSize), offset, visibility];
+
+      countQuery = `
+        SELECT COUNT(*) FROM blogs
+        WHERE (title ILIKE $1 OR description ILIKE $1 OR type ILIKE $1 OR short_description ILIKE $1 OR visibility ILIKE $1 ) AND visibility = $2
+      `;
+      countQueryParams = [searchQuery, visibility];
+    }
+
+    const blogsResult = await pool.query(query, queryParams);
+    const countResult = await pool.query(countQuery, countQueryParams);
     const totalBlogs = parseInt(countResult.rows[0].count, 10);
 
-    const totalPages = Math.ceil(totalBlogs / pageSize);
+    const totalPages = Math.ceil(totalBlogs / parseInt(pageSize));
 
     res.json({
-      blogs: activitiesResult.rows,
+      blogs: blogsResult.rows,
       totalBlogs,
       totalPages,
-      currentPage: page,
+      currentPage: parseInt(page),
     });
   } catch (error) {
     console.error(error);
@@ -114,9 +143,7 @@ app.delete("/deleteBlogs", authenticate, async (req, res) => {
 async function deleteBlogId(id) {
   const client = await pool.connect();
   try {
-    const res = await client.query("DELETE FROM blogs WHERE id = $1", [
-      id,
-    ]);
+    const res = await client.query("DELETE FROM blogs WHERE id = $1", [id]);
     return res;
   } finally {
     client.release();
@@ -139,13 +166,39 @@ const uploadablogs = multer({
 
 app.post("/addblogs", uploadablogs.array("file"), async (req, res) => {
   try {
-    const { title, short_description, description, type, id, typeupload } =
-      req.body;
+    const {
+      title,
+      short_description,
+      description,
+      type,
+      id,
+      visibility,
+      tags,
+      typeupload,
+    } = req.body;
     let media_url, thumbnail_url;
-    media_url = req.files?.[0]?.filename || null;
-    thumbnail_url = req.files?.[1]?.filename || null;
+    media_url = null;
+    thumbnail_url = null;
 
-    console.log(req.body, 'asdasdasdasdasd');
+    // Check for 'remove' in typeupload and set media_url and thumbnail_url accordingly
+    if (typeupload.includes("media")) {
+      if (typeupload.includes("remove")) {
+        media_url = null;
+      } else {
+        media_url = req.files?.[0]?.filename || null;
+      }
+    }
+
+    if (typeupload.includes("thumbnail")) {
+      if (media_url && !typeupload.includes("remove")) {
+        thumbnail_url = req.files?.[1]?.filename || null;
+      } else if (typeupload.includes("remove")) {
+        thumbnail_url = null;
+      } else {
+        thumbnail_url = req.files?.[0]?.filename || null;
+      }
+    }
+
     // Convert id to integer if present
     const blogsId = id ? parseInt(id) : null;
 
@@ -174,16 +227,17 @@ app.post("/addblogs", uploadablogs.array("file"), async (req, res) => {
       // Update existing blogs
       query = `
           UPDATE blogs
-          SET title = $1, short_description = $2, description = $3, type = $4, media_url = $5, thumbnail_url = $6, updated_at = $7, slug = $8
+          SET title = $1, short_description = $2, description = $3, type = $4, media_url = $5, thumbnail_url = $6, updated_at = $7, slug = $8, visibility = $10, keywords = $11
           WHERE id = $9
         `;
+
       if (typeupload.includes("media")) {
-        media_url = media_url || existingMediaUrls.media_url;
+        media_url = media_url;
       } else {
         media_url = existingMediaUrls.media_url;
       }
       if (typeupload.includes("thumbnail")) {
-        thumbnail_url = thumbnail_url || existingMediaUrls.thumbnail_url;
+        thumbnail_url = thumbnail_url;
       } else {
         thumbnail_url = existingMediaUrls.thumbnail_url;
       }
@@ -197,6 +251,8 @@ app.post("/addblogs", uploadablogs.array("file"), async (req, res) => {
         updated_at,
         slug,
         blogsId,
+        visibility,
+        tags,
       ];
 
       // Delete old files from the "uploads/blogs" directory if new files are uploaded
@@ -205,19 +261,30 @@ app.post("/addblogs", uploadablogs.array("file"), async (req, res) => {
         existingMediaUrls.media_url &&
         typeupload.includes("media")
       ) {
-        fs.unlinkSync(`./uploads/blogs/${existingMediaUrls.media_url}`);
+        const mediaFilePath = `./uploads/blogs/${existingMediaUrls.media_url}`;
+        if (fs.existsSync(mediaFilePath)) {
+          fs.unlinkSync(mediaFilePath);
+        } else {
+          console.log(`Media file does not exist: ${mediaFilePath}`);
+        }
       }
+
       if (
         thumbnail_url &&
         existingMediaUrls.thumbnail_url &&
         typeupload.includes("thumbnail")
       ) {
-        fs.unlinkSync(`./uploads/blogs/${existingMediaUrls.thumbnail_url}`);
+        const thumbnailFilePath = `./uploads/blogs/${existingMediaUrls.thumbnail_url}`;
+        if (fs.existsSync(thumbnailFilePath)) {
+          fs.unlinkSync(thumbnailFilePath);
+        } else {
+          console.log(`Thumbnail file does not exist: ${thumbnailFilePath}`);
+        }
       }
     } else {
       // Insert new blogs
       query = `
-          INSERT INTO blogs (title, short_description, description, type, media_url, thumbnail_url, updated_at, slug)
+          INSERT INTO blogs (title, short_description, description, type, media_url, thumbnail_url, updated_at, slug, visibility, keywords)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         `;
       values = [
@@ -229,6 +296,8 @@ app.post("/addblogs", uploadablogs.array("file"), async (req, res) => {
         thumbnail_url,
         updated_at,
         slug,
+        visibility,
+        tags,
       ];
     }
 

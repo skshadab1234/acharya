@@ -64,6 +64,8 @@ const ManageActivity = () => {
 
                 form.setFieldsValue(activity.result);
             });
+        } else {
+            form.resetFields();
         }
     }, [id]);
 
@@ -211,11 +213,14 @@ const ManageActivity = () => {
                         <Col xs={24} sm={12}>
                             <Form.Item name="media_url" label="Upload Media">
                                 <Upload
-                                    onRemove={() => setMediaFileList([])}
+                                    onRemove={() => {
+                                        setMediaFileList([]);
+                                        setTypes([...typeupload, 'media', 'remove']);
+                                    }}
                                     fileList={mediaFileList}
                                     listType="picture"
                                     name="media_url"
-                                    accept=".jpg,.png,.mp4,.webm"
+                                    accept=".jpg,.png,.mp4,.webm,.jpeg"
                                     beforeUpload={(file) => handleBeforeUpload(file, setMediaFileList, 'media')}
                                 >
                                     {mediaFileList.length === 0 && <Button icon={<UploadOutlined />}>Click to Upload</Button>}
@@ -225,11 +230,14 @@ const ManageActivity = () => {
                         <Col xs={24} sm={12}>
                             <Form.Item name="thumbnail_url" label="Upload Thumbnail">
                                 <Upload
-                                    onRemove={() => setThumbnailFileList([])}
+                                    onRemove={() => {
+                                        setThumbnailFileList([]);
+                                        setTypes([...typeupload, 'thumbnail', 'remove']);
+                                    }}
                                     fileList={thumbnailFileList}
                                     listType="picture"
                                     name="thumbnail_url"
-                                    accept=".jpg,.png"
+                                    accept=".jpg,.jpeg,.png"
                                     beforeUpload={(file) => handleBeforeUpload(file, setThumbnailFileList, 'thumbnail')}
                                 >
                                     {thumbnailFileList.length === 0 && <Button icon={<UploadOutlined />}>Click to Upload</Button>}

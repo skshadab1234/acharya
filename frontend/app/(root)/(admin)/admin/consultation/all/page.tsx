@@ -8,6 +8,7 @@ import { debounce } from 'lodash';
 import { Edit3Icon } from 'lucide-react';
 import { PhoneOutlined } from '@ant-design/icons';
 import moment from 'moment';
+import { useSearchParams } from 'next/navigation';
 
 interface RecordType {
     preferred_date: string;
@@ -18,6 +19,9 @@ interface RecordType {
 }
 
 const AllConsultation = () => {
+    const search = useSearchParams();
+    const mode = search.get('mode');
+
     const [form] = Form.useForm();
     const [consultationData, setConsultationData] = useState([]);
     const [totalRecords, setTotalRecords] = useState(0);
@@ -33,14 +37,14 @@ const AllConsultation = () => {
     const [showModalfix, setShowModal] = useState(false);
 
     useEffect(() => {
-        fetchData(currentPage, pageSize, searchTerm);
+        fetchData(currentPage, pageSize, searchTerm, mode);
     }, [currentPage, pageSize]);
 
-    const fetchData = async (page: any, pageSize: any, searchTerm: any) => {
+    const fetchData = async (page: any, pageSize: any, searchTerm: any, mode: any) => {
         const token = getCookie('tokenSagartech');
 
         try {
-            const response = await fetch(`${process.env.ADMINURL}/api/consultation?page=${parseInt(page)}&pageSize=${parseInt(pageSize)}&search=${searchTerm}`, {
+            const response = await fetch(`${process.env.ADMINURL}/api/consultation?page=${parseInt(page)}&pageSize=${parseInt(pageSize)}&search=${searchTerm}&mode=${mode}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -243,7 +247,7 @@ const AllConsultation = () => {
     };
 
     const handleSearch = debounce((text: string) => {
-        fetchData(1, 10, text);
+        fetchData(1, 10, text, mode);
     }, 300); // Adjust the debounce delay (in milliseconds) as needed
 
     const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,16 +261,49 @@ const AllConsultation = () => {
         cancelled: 'orange',
     };
 
+    const getTitle = () => {
+        switch (mode) {
+            case 'today':
+                return 'Today Consultation';
+            case 'attended':
+                return 'Attended Consultation';
+            case 'not_attended':
+                return 'Not Attended Consultation';
+            case 'cancelled':
+                return 'Cancelled Consultation';
+            default:
+                return 'All Consultation';
+        }
+    };
+
+    const getDescription = () => {
+        switch (mode) {
+            case 'today':
+                return 'Find Today consultation information here.';
+            case 'attended':
+                return 'Find attended consultation information here.';
+            case 'not_attended':
+                return 'Find not attended consultation information here.';
+            case 'cancelled':
+                return 'Find cancelled consultation information here.';
+            default:
+                return 'Find all consultation information here.';
+        }
+    };
+
+    const title = `${getTitle()} (${totalRecords})`;
+    const description = `${getDescription()}`;
+
     return (
         <div>
             <PageHeaderWithBreadcrumb
-                crumbs={[{ title: 'Home', href: '/admin' }, { title: 'Consultation', href: '/admin/consultation/all' }, { title: 'All Consultation' }]}
-                title={`All Consultation (${totalRecords})`}
-                description="Find all consultation information here."
+                crumbs={[{ title: 'Home', href: '/admin' }, { title: 'Consultation', href: '/admin/consultation/all' }, { title: title }]}
+                title={title}
+                description={description}
             />
             <div className="h-full w-full bg-white ">
                 <div className="my-4 p-4">
-                    <Input onChange={onInputChange} className="h-12 text-xl font-semibold text-gray-800 placeholder:text-xl" placeholder="Search customer name, contact number" />
+                    <Input onChange={onInputChange} className="h-12 text-xl font-semibold text-gray-800 placeholder:text-xl" placeholder="Search customer name, contact number, payment Id" />
                 </div>
                 <Spin spinning={loading}>
                     <Table scroll={{ x: 1200, y: 700 }} columns={columns} dataSource={consultationData} rowKey="id" pagination={false} />
@@ -428,8 +465,8 @@ const AllConsultation = () => {
                         {selectedRecord?.payment_obj ? (
                             <ul>
                                 {Object.entries(JSON.parse(selectedRecord.payment_obj)).map(([key, value]) => (
-                                    <li key={key} className='mb-2'>
-                                        <b className='text-gray-500 text-xs'>{key}:</b> <p className='text-sm text-gray-800'>{value}</p>
+                                    <li key={key} className="mb-2">
+                                        <b className="text-xs text-gray-500">{key}:</b> <p className="text-sm text-gray-800">{value}</p>
                                     </li>
                                 ))}
                             </ul>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Table, Input, Button, Pagination, Modal, Spin, Popover, message } from 'antd';
+import { Table, Input, Button, Pagination, Modal, Spin, Popover, message, Tag, Space } from 'antd';
 import PageHeaderWithBreadcrumb from '@/components/utils/pageHeaderwithBreadcrumb';
 import { debounce } from 'lodash';
 import moment from 'moment';
@@ -24,13 +24,13 @@ const ActivitiesAll = () => {
         fetchBlogs(page, pageSize, searchTerm);
     }, [page, pageSize]);
 
-    const fetchBlogs = async (page: number, pageSize: number, searchTerm: string) => {
+    const fetchBlogs = async (page, pageSize, searchTerm) => {
         setLoading(true);
         try {
-            const response = await fetch(`${process.env.ADMINURL}/api/allblogs`, {
-                method: 'POST',
+            const queryParams = new URLSearchParams({ page: String(page), pageSize: String(pageSize), search: searchTerm }).toString();
+            const response = await fetch(`${process.env.ADMINURL}/api/allblogs?${queryParams}`, {
+                method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ page, pageSize, search: searchTerm }),
             });
             const data = await response.json();
             setBlogs(data.blogs);
@@ -50,7 +50,7 @@ const ActivitiesAll = () => {
     const handleEdit = (activityId: number) => {
         // Redirect to edit page or open modal for editing activity
         console.log('Edit activity', activityId);
-        router.push(`/admin/blogs/manageactivity?id=${activityId}`);
+        router.push(`/admin/blog/manageblog?id=${activityId}`);
     };
 
     const handleDelete = async (activityId: number) => {
@@ -105,11 +105,57 @@ const ActivitiesAll = () => {
             key: 'type',
         },
         {
+            title: 'Keywords',
+            dataIndex: 'keywords',
+            key: 'keywords',
+            render: (keywords) => {
+                // Split the keywords string into an array
+                const keywordsArray = keywords?.split(',').map((keyword) => keyword.trim());
+
+                const colors = ['magenta', 'red', 'volcano', 'orange', 'gold', 'lime', 'green', 'cyan', 'blue', 'geekblue', 'purple'];
+                return (
+                    <div>
+                        {keywordsArray &&
+                            keywordsArray.map((keyword, index) => (
+                                <Space className='m-1'>
+                                    <Tag color={colors[index % colors.length]} key={keyword}>
+                                        {keyword}
+                                    </Tag>
+                                </Space>
+                            ))}
+                    </div>
+                );
+            },
+        },
+
+        {
             title: 'Creation Date',
             dataIndex: 'date',
             key: 'date',
-            render: (_: string, record: void) => <span>{moment(record.created_at).format('LLL')}</span>,
+            render: (_: string, record: { created_at: string }) => <span>{moment(record.created_at).format('LLL')}</span>,
         },
+        {
+            title: 'Update Date',
+            dataIndex: 'updated_on',
+            key: 'updated_on',
+            render: (_: string, record: { updated_on: string }) => <span>{moment(record.updated_on).format('LLL')}</span>,
+        },
+        {
+            title: 'Visibility',
+            dataIndex: 'visibility',
+            key: 'visibility',
+            render: (_: string, record: { visibility: string }) => {
+                const visibilityText = record.visibility.toUpperCase();
+                const isPublic = visibilityText === 'PUBLIC';
+
+                return (
+                    <span className={`uppercase ${isPublic ? 'text-green-600' : 'text-red-600'}`}>
+                        {visibilityText} {isPublic ? '🌐' : '🔒'}
+                    </span>
+                );
+            },
+        },
+
         {
             title: 'Actions',
             key: 'actions',
@@ -155,7 +201,7 @@ const ActivitiesAll = () => {
 
             <div className="h-full w-full bg-white ">
                 <div className="my-4 p-4">
-                    <Input onChange={onInputChange} className="h-12 text-xl font-semibold text-gray-800 placeholder:text-xl" placeholder="Search title, description, type" />
+                    <Input onChange={onInputChange} className="h-12 text-xl font-semibold text-gray-800 placeholder:text-xl" placeholder="Search title, description, type, visibility" />
                 </div>
                 <Spin spinning={loading}>
                     <Table bordered scroll={{ x: 1200, y: 700 }} columns={columns} dataSource={blogs} rowKey="id" pagination={false} />

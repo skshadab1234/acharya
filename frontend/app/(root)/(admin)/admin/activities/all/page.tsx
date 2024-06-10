@@ -24,13 +24,13 @@ const ActivitiesAll = () => {
         fetchActivities(page, pageSize, searchTerm);
     }, [page, pageSize]);
 
-    const fetchActivities = async (page: number, pageSize: number, searchTerm: string) => {
+    const fetchActivities = async (page, pageSize, searchTerm) => {
         setLoading(true);
         try {
-            const response = await fetch(`${process.env.ADMINURL}/api/allactivities`, {
-                method: 'POST',
+            const queryParams = new URLSearchParams({ page: String(page), pageSize: String(pageSize), search: searchTerm }).toString();
+            const response = await fetch(`${process.env.ADMINURL}/api/allactivities?${queryParams}`, {
+                method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ page, pageSize, search: searchTerm }),
             });
             const data = await response.json();
             setActivities(data.activities);

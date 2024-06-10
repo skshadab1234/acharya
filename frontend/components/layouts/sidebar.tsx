@@ -235,20 +235,14 @@ const Sidebar = () => {
                                             <Link href="/admin/activities/all">{t('All activities')}</Link>
                                         </li>
                                         <li>
-                                            <Link target="blank" href="/admin/activities/manageactivity">
-                                                {t('Add New Activity')}
-                                            </Link>
+                                            <Link href="/admin/activities/manageactivity">{t('Add New Activity')}</Link>
                                         </li>
                                     </ul>
                                 </AnimateHeight>
                             </li>
 
                             <li className="menu nav-item">
-                                <button
-                                    type="button"
-                                    className={`${currentMenu === '/admin/blog/all' ? 'active' : ''} nav-link group w-full`}
-                                    onClick={() => toggleMenu('/admin/blog/all')}
-                                >
+                                <button type="button" className={`${currentMenu === '/admin/blog/all' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('/admin/blog/all')}>
                                     <div className="flex items-center">
                                         <WorkflowIcon className="shrink-0 group-hover:!text-primary" />
                                         <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{t('Blogs')}</span>
@@ -265,9 +259,7 @@ const Sidebar = () => {
                                             <Link href="/admin/blog/all">{t('All blog')}</Link>
                                         </li>
                                         <li>
-                                            <Link target="blank" href="/admin/blog/manageblog">
-                                                {t('Add New Blog')}
-                                            </Link>
+                                            <Link href="/admin/blog/manageblog">{t('Add New Blog')}</Link>
                                         </li>
                                     </ul>
                                 </AnimateHeight>

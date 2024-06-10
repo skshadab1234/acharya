@@ -14,7 +14,7 @@ app.use((req, res, next) => {
 
 app.get("/consultation", authenticate, async (req, res) => {
   try {
-    const { page = 1, pageSize = 10, search } = req.query;
+    const { page = 1, pageSize = 10, search, mode = null } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(pageSize);
 
     let cleanedSearchTerm = search ? search.replace(/-/g, "") : null;
@@ -23,16 +23,69 @@ app.get("/consultation", authenticate, async (req, res) => {
       SELECT * FROM consultation
       WHERE 1=1 
     `;
+    let countQuery = `
+      SELECT COUNT(*) FROM consultation
+      WHERE 1=1
+    `;
     const values = [];
+    const countValues = [];
 
     // Append search conditions if search term is provided
     if (cleanedSearchTerm) {
       consultationsQuery += `
-        AND (full_name ILIKE $${values.push(
-          `%${cleanedSearchTerm}%`
-        )} OR REPLACE(contact_number, '-', '') ILIKE $${values.push(
-        `%${cleanedSearchTerm}%`
-      )})
+        AND (
+          full_name ILIKE $${values.push(`%${cleanedSearchTerm}%`)} OR
+          REPLACE(contact_number, '-', '') ILIKE $${values.push(
+            `%${cleanedSearchTerm}%`
+          )} OR
+          payment_id ILIKE $${values.push(`%${cleanedSearchTerm}%`)} OR
+          payment_status ILIKE $${values.push(`%${cleanedSearchTerm}%`)} OR
+          payment_amount ILIKE $${values.push(`%${cleanedSearchTerm}%`)} OR
+          email_address ILIKE $${values.push(`%${cleanedSearchTerm}%`)}
+        )
+      `;
+      countQuery += `
+        AND (
+          full_name ILIKE $${countValues.push(`%${cleanedSearchTerm}%`)} OR
+          REPLACE(contact_number, '-', '') ILIKE $${countValues.push(
+            `%${cleanedSearchTerm}%`
+          )} OR
+          payment_id ILIKE $${countValues.push(`%${cleanedSearchTerm}%`)} OR 
+          payment_status ILIKE $${countValues.push(`%${cleanedSearchTerm}%`)} OR
+          payment_amount ILIKE $${countValues.push(`%${cleanedSearchTerm}%`)} OR
+          email_address ILIKE $${countValues.push(`%${cleanedSearchTerm}%`)}
+        )
+      `;
+    }
+
+    if (mode === "today") {
+      const today = new Date().toISOString().split("T")[0]; // Get today's date in 'YYYY-MM-DD' format
+      consultationsQuery += `
+        AND preferred_date = $${values.push(today)}
+      `;
+      countQuery += `
+        AND preferred_date = $${countValues.push(today)}
+      `;
+    } else if (mode === "attended") {
+      consultationsQuery += `
+        AND appointmentstatus = $${values.push(mode)}
+      `;
+      countQuery += `
+        AND appointmentstatus = $${countValues.push(mode)}
+      `;
+    } else if (mode === "not_attended") {
+      consultationsQuery += `
+        AND appointmentstatus = $${values.push(mode)}
+      `;
+      countQuery += `
+        AND appointmentstatus = $${countValues.push(mode)}
+      `;
+    } else if (mode === "cancelled") {
+      consultationsQuery += `
+        AND appointmentstatus = $${values.push(mode)}
+      `;
+      countQuery += `
+        AND appointmentstatus = $${countValues.push(mode)}
       `;
     }
 
@@ -53,12 +106,11 @@ app.get("/consultation", authenticate, async (req, res) => {
       LIMIT $${values.push(parseInt(pageSize))} OFFSET $${values.push(offset)}
     `;
 
-    const countQuery = "SELECT COUNT(*) FROM consultation";
-
     const [consultations, totalCount] = await Promise.all([
       pool.query(consultationsQuery, values),
-      pool.query(countQuery),
+      pool.query(countQuery, countValues),
     ]);
+
     console.log(consultationsQuery, values);
     res.json({
       data: consultations.rows,
@@ -473,7 +525,7 @@ const sendAppointmentConfirmationEmail = async (bookingDetails) => {
 
 app.get("/consultstats", async (req, res) => {
   try {
-    // SQL query to count consultations by status and the total count
+    // SQL queries
     const statsQuery = `
       SELECT 
         appointmentstatus, 
@@ -482,21 +534,36 @@ app.get("/consultstats", async (req, res) => {
       GROUP BY appointmentstatus
     `;
 
-    const totalQuery = `
+    const totalConsultsQuery = `
       SELECT COUNT(*) as total_appointment FROM consultation
     `;
 
-    // SQL query to fetch today's consultations
     const todayConsultsQuery = `
       SELECT COUNT(*) as today_appointments FROM consultation
       WHERE CAST(preferred_date AS DATE) = CURRENT_DATE
     `;
 
+    const totalBlogsQuery = `
+      SELECT COUNT(*) as total_blogs FROM blogs
+    `;
+
+    const totalActivitiesQuery = `
+      SELECT COUNT(*) as total_activities FROM activities
+    `;
+
     // Execute the queries
-    const [statusResult, totalResult, todayResult] = await Promise.all([
+    const [
+      statusResult,
+      totalConsultsResult,
+      todayResult,
+      totalBlogsResult,
+      totalActivitiesResult,
+    ] = await Promise.all([
       pool.query(statsQuery),
-      pool.query(totalQuery),
+      pool.query(totalConsultsQuery),
       pool.query(todayConsultsQuery),
+      pool.query(totalBlogsQuery),
+      pool.query(totalActivitiesQuery),
     ]);
 
     // Convert the status result to an object with status as the key and count as the value
@@ -507,7 +574,7 @@ app.get("/consultstats", async (req, res) => {
 
     // Get the total appointment count
     const totalAppointments = parseInt(
-      totalResult.rows[0].total_appointment,
+      totalConsultsResult.rows[0].total_appointment,
       10
     );
 
@@ -517,11 +584,22 @@ app.get("/consultstats", async (req, res) => {
       10
     );
 
-    // Combine the status counts, total appointment count, and today's appointments count into the response object
+    // Get the total blogs count
+    const totalBlogs = parseInt(totalBlogsResult.rows[0].total_blogs, 10);
+
+    // Get the total activities count
+    const totalActivities = parseInt(
+      totalActivitiesResult.rows[0].total_activities,
+      10
+    );
+
+    // Combine the results into the response object
     const stats = {
       ...statusCounts,
       total_appointment: totalAppointments,
       today_appointments: todayAppointments,
+      total_blogs: totalBlogs,
+      total_activities: totalActivities,
     };
 
     res.status(200).json({ stats });
