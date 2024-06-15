@@ -10,6 +10,9 @@ const consult = require("./routes/consult");
 const razorpay = require("./routes/razorpay");
 const activity = require("./routes/activity");
 const blog = require("./routes/blog");
+const customer = require("./routes/customer");
+const courses = require("./routes/courses");
+
 
 
 app.use(express.json()); // Middleware para parsear el body
@@ -25,6 +28,9 @@ app.use("/api", consult);
 app.use("/api", razorpay);
 app.use("/api", activity);
 app.use("/api", blog);
+app.use("/api", customer);
+app.use("/api", courses);
+
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

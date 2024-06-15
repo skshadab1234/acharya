@@ -285,7 +285,7 @@ app.post("/addblogs", uploadablogs.array("file"), async (req, res) => {
       // Insert new blogs
       query = `
           INSERT INTO blogs (title, short_description, description, type, media_url, thumbnail_url, updated_at, slug, visibility, keywords)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         `;
       values = [
         title,

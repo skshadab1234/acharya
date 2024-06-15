@@ -34,7 +34,7 @@
     /* Navbar */
     .navbar-sticky header,
     .navbar-floating header {
-        @apply sticky top-0 z-20;
+        @apply relative top-0 z-20;
     }
     .navbar-floating header {
         @apply bg-[#fafafa]/90 px-6 pt-4 dark:bg-[#060818]/90;
@@ -710,4 +710,33 @@ img.dark-img {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4; /* Limit to 4 lines */
+}
+.cssbuttons-io-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2em;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 0.5em 1.5em;
+    color: white;
+    background: linear-gradient(0deg, rgb(30, 144, 255), rgb(70, 130, 180)); /* Blue gradient */
+    border: none;
+    outline: none;
+    box-shadow: 0 0.5em 0.5em -0.4em rgb(0, 0, 0, 0.5);
+    letter-spacing: 0.08em;
+    border-radius: 20em;
+    cursor: pointer;
+    transition: 0.5s;
+}
+
+.cssbuttons-io-button:hover {
+    filter: brightness(1.2);
+    color: rgb(0, 0, 0, 0.5);
+}
+
+.cssbuttons-io-button:active {
+    transition: 0s;
+    transform: rotate(-10deg);
 }

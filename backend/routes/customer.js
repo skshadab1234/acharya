@@ -1,0 +1,100 @@
+const express = require("express");
+const app = express();
+const pool = require("../config");
+const bcrypt = require("bcrypt");
+const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const authenticate = require("../lib");
+app.use(express.json());
+app.use(cors());
+app.use((req, res, next) => {
+  req.pool = pool;
+  next();
+});
+
+app.post("/userLogin", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const result = await req.pool.query(
+      "SELECT * FROM students WHERE student_email = $1",
+      [email]
+    );
+
+    if (result.rows.length > 0) {
+      const studentsLogin = result.rows[0];
+      const hashedPassword = studentsLogin.student_password; // Assuming the hashed password is stored in the 'password' field
+
+      // Compare the hashed password with the input password
+      const passwordMatch = await bcrypt.compare(password, hashedPassword);
+      if (passwordMatch) {
+        const token = jwt.sign(
+          { id: studentsLogin.student_id },
+          process.env.SECRET_KEY,
+          {
+            expiresIn: "8h", // Token expires in 1 hour
+          }
+        );
+        // Set a cookie with the JWT
+        res.cookie("Acharya_web_token", token, {
+          httpOnly: true,
+          secure: false,
+        }); // Set secure to true if you're using HTTPS
+
+        // Calculate the expiry time based on the 'expiresIn' option
+        const expiryTime = new Date(Date.now() + 60 * 60 * 8000); // 1 hour from now
+
+        res.status(200).send({
+          status: 200,
+          message: "Login successful.",
+          token,
+          expiryTime,
+        });
+      } else {
+        // Passwords do not match
+        res.status(200).json({ status: 400, message: "Invalid Password..." });
+      }
+    } else {
+      res.status(200).json({ status: 400, message: "Email does not exist." });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.post("/getStudentData", authenticate, async (req, res) => {
+  try {
+    if (req.userId) {
+      const studentData = await req.pool.query(
+        "SELECT * FROM students WHERE student_id = $1",
+        [req.userId]
+      );
+      if (studentData.rows.length === 0) {
+        res.status(200).json({
+          status: false,
+          message: `User with ID ${req.userId} not found`,
+        });
+        throw new Error(`User with ID ${req.userId} not found`);
+      }
+
+      delete studentData.rows[0].password;
+      // Send a response
+      res.status(200).json({
+        status: true,
+        data: studentData.rows[0],
+        message: "Student data fetched successfully",
+      });
+    } else {
+      res.status(200).json({
+        status: false,
+        message: "Please login first",
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+module.exports = app;
