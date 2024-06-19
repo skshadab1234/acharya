@@ -23,7 +23,6 @@ import IconCaretDown from '@/components/icon/icon-caret-down';
 import IconMenuApps from '@/components/icon/menu/icon-menu-apps';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTranslation } from '@/i18n';
-import { Adminurl } from '@/app/layout';
 import { addAdmin } from '@/store/adminslice';
 import { Avatar, Button, Modal } from 'antd';
 import { jwtDecode } from "jwt-decode";

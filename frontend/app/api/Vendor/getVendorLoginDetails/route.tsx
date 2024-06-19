@@ -1,4 +1,3 @@
-import { Adminurl } from '@/app/layout';
 
 export async function POST(request: Request) {
     try {
@@ -14,7 +13,7 @@ export async function POST(request: Request) {
             },
         };
 
-        const response = await fetch(`${Adminurl}/api/getVendorLoginDetails`, requestOptions);
+        const response = await fetch(`${process.env.ADMINURL}/api/getVendorLoginDetails`, requestOptions);
 
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);

@@ -1,4 +1,3 @@
-import { Adminurl } from '@/app/layout';
 
 export async function POST(request: Request) {
     try {
@@ -15,7 +14,7 @@ export async function POST(request: Request) {
             body: JSON.stringify(await request.json())
         };
 
-        const response = await fetch(`${Adminurl}/api/vendors/all`, requestOptions);
+        const response = await fetch(`${process.env.ADMINURL}/api/vendors/all`, requestOptions);
 
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);

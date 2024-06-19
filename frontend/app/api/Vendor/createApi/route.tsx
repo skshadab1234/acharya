@@ -1,4 +1,3 @@
-import { Adminurl } from '@/app/layout';
 
 export async function POST(request: Request) {
     try {
@@ -19,7 +18,7 @@ export async function POST(request: Request) {
             body: JSON.stringify(await request.json())
         };
 
-        const response = await fetch(`${Adminurl}/api/createApi`, requestOptions);
+        const response = await fetch(`${process.env.ADMINURL}/api/createApi`, requestOptions);
 
         const responseData = await response.json();
 

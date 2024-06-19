@@ -4,7 +4,6 @@ import '../styles/tailwind.css';
 import { Metadata } from 'next';
 import { Nunito } from 'next/font/google';
 
-export const Adminurl = process.env.ADMINURL;
 
 export const metadata: Metadata = {
     title: {

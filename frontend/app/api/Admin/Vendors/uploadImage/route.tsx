@@ -1,4 +1,3 @@
-import { Adminurl } from "@/app/layout";
 
 export async function POST(request: Request) {
     try {
@@ -11,7 +10,7 @@ export async function POST(request: Request) {
             body: formData,
         };
 
-        const response = await fetch(`${Adminurl}/api/vendors/uploadImage`, requestOptions);
+        const response = await fetch(`${process.env.ADMINURL}/api/vendors/uploadImage`, requestOptions);
 
         
         if (response.ok) {
